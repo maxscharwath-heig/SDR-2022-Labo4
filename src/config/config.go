@@ -21,7 +21,7 @@ type ServerConfig struct {
 	Neighbours []int  `json:"neighbours"`
 }
 
-func (d *ServerConfig) fullHost() (*net.UDPAddr, error) {
+func (d *ServerConfig) Address() (*net.UDPAddr, error) {
 	return net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", d.Host, d.Port))
 }
 

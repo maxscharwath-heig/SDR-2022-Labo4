@@ -1,15 +1,19 @@
 package main
 
+import (
+	"SDR-Labo4/src/config"
+	"SDR-Labo4/src/server"
+	"flag"
+)
+
 func main() {
-	/*
-		serverIdInput := flag.Int("id", 0, "server id")
-		flag.Parse()
+	serverIdInput := flag.Int("id", 0, "server id")
+	flag.Parse()
 
-		c, _ := config.LoadConfig()
+	c, _ := config.LoadConfig()
 
-		serverId := *serverIdInput
+	serverId := *serverIdInput
 
-			server := CreateServer(c, serverId)
-			server.Start()
-	*/
+	server, _ := server.CreateServer(c, serverId)
+	server.Start()
 }
