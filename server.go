@@ -2,7 +2,7 @@ package main
 
 import (
 	"SDR-Labo4/src/config"
-	"SDR-Labo4/src/server"
+	. "SDR-Labo4/src/server"
 	"flag"
 )
 
@@ -14,6 +14,6 @@ func main() {
 
 	serverId := *serverIdInput
 
-	server, _ := server.CreateServer(c, serverId)
+	server, _ := CreateServer(c, serverId)
 	server.Start()
 }
