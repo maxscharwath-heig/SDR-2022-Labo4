@@ -2,7 +2,7 @@ package server
 
 import (
 	"SDR-Labo4/src/config"
-	"log"
+	"SDR-Labo4/src/utils/log"
 	"net"
 )
 
@@ -29,14 +29,14 @@ func CreateServer(config *config.Config, id int) (*Server, error) {
 }
 
 func (s *Server) Start() error {
-	log.Default().Printf("Starting server %d with address %s", s.id, s.address)
+	log.Logf(log.Info, "Starting server %d with address %s", s.id, s.address)
 	conn, err := net.ListenUDP("udp", s.address)
 	if err != nil {
-		log.Default().Printf("Error starting server %d: %s", s.id, err)
+		log.Logf(log.Error, "Error starting server %d: %s", s.id, err)
 		return err
 	}
 	s.conn = conn
-	log.Default().Printf("Server %d started", s.id)
+	log.Logf(log.Info, "Server %d started", s.id)
 	go s.processMessage()
 	return nil
 }
@@ -48,6 +48,7 @@ func (s *Server) GetMessage() chan []byte {
 func (s *Server) Send(data []byte, serverId int) error {
 	address, err := s.config.Servers[serverId].Address()
 	if err != nil {
+		log.Logf(log.Error, "Error sending to server %d: %s", s.id, err)
 		return err
 	}
 	_, err = s.conn.WriteToUDP(data, address)
@@ -59,9 +60,8 @@ func (s *Server) GetNeighbours() []int {
 }
 
 func (s *Server) Stop() {
-	log.Default().Printf("Stopping server %d", s.id)
 	s.conn.Close()
-	log.Default().Printf("Server %d stopped", s.id)
+	log.Logf(log.Info, "Server %d stopped", s.id)
 }
 
 func (s *Server) GetId() int {
@@ -77,7 +77,7 @@ func (s *Server) processMessage() {
 		buffer := make([]byte, 1024)
 		n, _, err := s.conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Default().Printf("Error reading from UDP: %s", err)
+			log.Logf(log.Error, "Error reading from server %d: %s", s.id, err)
 			return
 		}
 		s.messages <- buffer[:n]

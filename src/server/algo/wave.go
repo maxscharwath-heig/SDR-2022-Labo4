@@ -2,78 +2,70 @@ package algo
 
 import (
 	"SDR-Labo4/src/server"
+	"SDR-Labo4/src/utils/log"
 	"encoding/json"
 	"fmt"
-	"log"
 )
 
+type Data = string
+
 type Message struct {
-	From     int   `json:"from"`
-	Active   bool  `json:"active"`
-	Topology []int `json:"topology"`
+	From   int          `json:"from"`
+	Active bool         `json:"active"`
+	Data   map[int]Data `json:"data"`
 }
 
 func (m Message) String() string {
-	return fmt.Sprintf("Data from %d, active: %t, topology: %s", m.From, m.Active, m.Topology)
+	return fmt.Sprintf("Data from %d, active: %t, data: %v", m.From, m.Active, m.Data)
 }
 
 type Wave struct {
 	server     server.Server
-	neighbours map[int]bool // map of neighbours (true if active)
-	topology   []bool
+	nbNodes    int
+	data       map[int]Data
+	neighbours map[int]bool
 }
 
 func NewWave(server server.Server, nbNodes int) *Wave {
 	w := &Wave{
 		server:     server,
+		nbNodes:    nbNodes,
+		data:       make(map[int]Data),
 		neighbours: make(map[int]bool),
-		topology:   make([]bool, nbNodes),
 	}
-
-	// topology is used to keep data
-	w.topology[server.GetId()] = true
-
+	w.data[server.GetId()] = server.GetConfig().Letter
 	for _, neighbour := range server.GetNeighbours() {
 		w.neighbours[neighbour] = true
 	}
-
 	return w
 }
 
 func (w *Wave) Run() {
-	log.Default().Printf("Starting wave algorithm on server %d", w.server.GetId())
+	log.Logf(log.Info, "Starting wave algorithm on server %d", w.server.GetId())
 	for !w.isTopologyComplete() {
 
 		// Send message to neighbours
-		message := Message{
-			From:     w.server.GetId(),
-			Active:   true,
-			Topology: w.getTopology(),
-		}
 		for neighbour := range w.neighbours {
-			w.send(message, neighbour)
+			w.send(true, neighbour)
 		}
 
 		// Receive messages from neighbours
 		for neighbour := range w.neighbours {
 			message, _ := w.receive()
+			log.Logf(log.Trace, "Server %d received message from %d: %s", w.server.GetId(), neighbour, message)
 			w.neighbours[neighbour] = message.Active
-
-			//merge topology
-			for _, node := range message.Topology {
-				w.topology[node] = true
+			// Update data
+			for id, data := range message.Data {
+				if _, ok := w.data[id]; !ok {
+					w.data[id] = data
+				}
 			}
 
 		}
 	}
-	message := Message{
-		From:     w.server.GetId(),
-		Active:   false,
-		Topology: w.getTopology(),
-	}
 	for neighbour, active := range w.neighbours {
 		if active {
-			w.send(message, neighbour)
+			w.send(false, neighbour)
 		}
 	}
 	for _, active := range w.neighbours {
@@ -81,29 +73,19 @@ func (w *Wave) Run() {
 			_, _ = w.receive()
 		}
 	}
-	log.Default().Printf("Wave algorithm on server %d is done with topology %v", w.server.GetId(), w.getTopology())
+	log.Logf(log.Info, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
 }
 
 func (w *Wave) isTopologyComplete() bool {
-	for _, active := range w.topology {
-		if !active {
-			return false
-		}
-	}
-	return true
+	return len(w.data) == w.nbNodes
 }
 
-func (w *Wave) getTopology() []int {
-	var topology []int
-	for i, active := range w.topology {
-		if active {
-			topology = append(topology, i)
-		}
+func (w *Wave) send(active bool, neighbour int) {
+	message := Message{
+		From:   w.server.GetId(),
+		Active: active,
+		Data:   w.data,
 	}
-	return topology
-}
-
-func (w *Wave) send(message Message, neighbour int) {
 	if data, err := json.Marshal(message); err == nil {
 		w.server.Send(data, neighbour)
 	}

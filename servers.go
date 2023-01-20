@@ -4,14 +4,13 @@ import (
 	"SDR-Labo4/src/config"
 	. "SDR-Labo4/src/server"
 	"SDR-Labo4/src/server/algo"
-	"fmt"
-	"log"
+	"SDR-Labo4/src/utils/log"
 )
 
 func main() {
 	c, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Error loading config: ", err)
+		log.Logf(log.Fatal, "Error loading config: %s", err)
 	}
 
 	servers := make([]*Server, len(c.Servers))
@@ -19,7 +18,7 @@ func main() {
 	for serverId := range c.Servers {
 		server, err := CreateServer(c, serverId)
 		if err != nil {
-			panic(fmt.Sprintf("Could not create server %d: %s", serverId, err))
+			log.Logf(log.Fatal, "Could not create server %d: %s", serverId, err)
 		}
 		servers[serverId] = server
 		server.Start()
