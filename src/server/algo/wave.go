@@ -5,6 +5,7 @@ import (
 	"SDR-Labo4/src/utils/log"
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 type Message struct {
@@ -31,7 +32,7 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 		data:       make(map[int]Data),
 		neighbours: make(map[int]bool),
 	}
-	for _, neighbour := range server.GetNeighbours() {
+	for _, neighbour := range server.GetConfig().Neighbours {
 		w.neighbours[neighbour] = true
 	}
 	return w
@@ -43,39 +44,48 @@ func (w *Wave) Run() {
 	w.waitForClient()
 
 	for !w.isTopologyComplete() {
-
-		// Send message to neighbours
-		for neighbour := range w.neighbours {
+		// Send message to activeNeigbours
+		for _, neighbour := range w.getNeighbours() {
 			w.send(true, neighbour)
 		}
 
-		// Receive messages from neighbours
-		for _ = range w.neighbours {
+		for neighbour := range w.neighbours {
 			message, _ := w.receive()
-			w.neighbours[message.From] = message.Active
-			// Update data
+
 			for id, data := range message.Data {
 				if _, ok := w.data[id]; !ok {
 					w.data[id] = data
 				}
 			}
 
+			if !message.Active {
+				log.Logf(log.Info, "Server %d is removing %d from its neighbours", w.server.GetId(), neighbour)
+				delete(w.neighbours, message.From)
+			}
 		}
 	}
-	for neighbour, active := range w.neighbours {
-		if active {
-			w.send(false, neighbour)
-		}
+
+	for _, neighbour := range w.getNeighbours() {
+		w.send(false, neighbour)
 	}
-	for _, active := range w.neighbours {
-		if active {
-			log.Logf(log.Warn, "Server %d is purging", w.server.GetId())
-			_, _ = w.receive()
-		}
+
+	for _, neighbour := range w.getNeighbours() {
+		log.Logf(log.Warn, "Server %d is purging %d", w.server.GetId(), neighbour)
+		_, _ = w.receive()
+		log.Logf(log.Warn, "Server %d purged %d", w.server.GetId(), neighbour)
 	}
-	log.Logf(log.Info, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
+	log.Logf(log.Error, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
 
 	w.respondToClient()
+}
+
+func (w *Wave) getNeighbours() []int {
+	keys := make([]int, 0)
+	for k, _ := range w.neighbours {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	return keys
 }
 
 func (w *Wave) isTopologyComplete() bool {
@@ -88,33 +98,46 @@ func (w *Wave) send(active bool, neighbour int) {
 		Active: active,
 		Data:   w.data,
 	}
-	log.Logf(log.Trace, "Server %d sending message to %d: %s", w.server.GetId(), neighbour, message)
+	log.Logf(log.Info, "Server %d is sending %v to %d", w.server.GetId(), message, neighbour)
 	if data, err := json.Marshal(message); err == nil {
 		w.server.Send(data, neighbour)
 	}
 }
 
 func (w *Wave) receive() (Message, error) {
-	data := (<-w.server.GetMessage()).Data
-	var message Message
-	if err := json.Unmarshal(data, &message); err != nil {
-		return message, err
+	for {
+		select {
+		case message := <-w.server.GetMessage():
+			var m Message
+			if err := json.Unmarshal(message.Data, &m); err != nil {
+				return m, err
+			}
+			log.Logf(log.Info, "Server %d received %v", w.server.GetId(), m)
+			return m, nil
+		}
 	}
-	log.Logf(log.Trace, "Server %d received message from %d: %s", w.server.GetId(), message.From, message)
-	return message, nil
 }
 
 func (w *Wave) waitForClient() {
-	log.Log(log.Info, "Waiting for client to send data")
-	word := string((<-w.server.GetClientMessage()).Data)
-	log.Logf(log.Info, "Server %d received word: %s", w.server.GetId(), word)
-
-	counter := CountLetter(word, w.server.GetConfig().Letter)
-	log.Logf(log.Info, "Server %d found %d %s", w.server.GetId(), counter, w.server.GetConfig().Letter)
-	w.data[w.server.GetId()] = counter
+	// wait for the client to be ready
+	for {
+		select {
+		case message := <-w.server.GetClientMessage():
+			word := string(message.Data)
+			counter := CountLetter(word, w.server.GetConfig().Letter)
+			log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, w.server.GetConfig().Letter, word)
+			w.data[w.server.GetId()] = counter
+			return
+		}
+	}
 }
 
 func (w *Wave) respondToClient() {
-	client := <-w.server.GetClientMessage()
-	client.Reply([]byte(fmt.Sprintf("%v", w.data)))
+	// the process is done, send the result to the client
+	for {
+		select {
+		case message := <-w.server.GetClientMessage():
+			_ = message.Reply([]byte(fmt.Sprintf("%v", w.data)))
+		}
+	}
 }

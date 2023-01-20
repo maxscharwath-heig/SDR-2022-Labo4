@@ -8,13 +8,14 @@ import (
 )
 
 type Message struct {
-	server *Server
-	From   *net.UDPAddr
-	Data   []byte
+	conn network.Connection
+	From *net.UDPAddr
+	Data []byte
 }
 
 func (m *Message) Reply(data []byte) (err error) {
-	return m.server.conn.SendTo(network.CodeServer, data, m.From)
+	log.Logf(log.Debug, "Sending message to client:%s: %s", m.From, string(data))
+	return m.conn.SendTo(network.CodeClient, data, m.From)
 }
 
 type Server struct {
@@ -95,19 +96,17 @@ func (s *Server) processMessage() {
 			return
 		}
 
-		log.Logf(log.Debug, "Received message[%d] from %s: %s", code, from, string(data))
-
 		message := Message{
-			server: s,
-			From:   from,
-			Data:   data,
+			conn: s.conn,
+			From: from,
+			Data: data,
 		}
 
 		switch code {
 		case network.CodeServer:
-			s.messages <- message
+			go func() { s.messages <- message }()
 		case network.CodeClient:
-			s.clientMessages <- message
+			go func() { s.clientMessages <- message }()
 		}
 	}
 }

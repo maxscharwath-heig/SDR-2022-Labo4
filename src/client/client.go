@@ -26,13 +26,11 @@ func (c *Client) Close() {
 
 func (c *Client) processMessage() {
 	for {
-		buffer := make([]byte, 1024)
-		n, _, err := c.conn.ReadFromUDP(buffer)
+		_, data, _, err := c.conn.Receive()
 		if err != nil {
-			log.Log(log.Debug, "Client closed")
 			return
 		}
-		c.messages <- buffer[:n]
+		go func() { c.messages <- data }()
 	}
 }
 
@@ -44,7 +42,8 @@ func CreateClient(server config.ServerConfig) (*Client, error) {
 		return nil, err
 	}
 	client := &Client{
-		conn: network.Connection{UDPConn: conn},
+		conn:     network.Connection{UDPConn: conn},
+		messages: make(chan []byte),
 	}
 	go client.processMessage()
 	return client, nil

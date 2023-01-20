@@ -60,22 +60,33 @@ func main() {
 			log.Logf(log.Error, "Invalid mode %d selected, valid modes are: <1 | 2>", *clientMode)
 		}
 
-		// ask for result for a chosen server
-		server := input.BasicInput[int]("Choose a server to ask for the result [0-%d]: ", len(c.Servers)-1).AddCheck(func(i int) bool {
-			return i >= 0 && i < len(c.Servers)
-		}, "Please enter a valid server id").Read()
+		for {
+			// ask for result for a chosen server
+			server := input.BasicInput[int]("Choose a server to ask for the result [0-%d]: ", len(c.Servers)-1).AddCheck(func(i int) bool {
+				return i >= 0 && i < len(c.Servers)
+			}, "Please enter a valid server id").Read()
 
-		if client, err := CreateClient(c.Servers[server]); err == nil {
-			client.Send([]byte("result"))
-			select {
-			case msg := <-client.GetMessage():
-				log.Logf(log.Info, "Result: %s", string(msg))
-				continue
-			case <-time.After(5 * time.Second):
-				log.Log(log.Info, "No result received")
-				continue
+			if client, err := CreateClient(c.Servers[server]); err == nil {
+				if err := client.Send([]byte("result")); err != nil {
+					log.Logf(log.Error, "Error sending \"result\" to %s: %s", c.Servers[server], err)
+				} else {
+					log.Logf(log.Info, "Sent \"result\" to server %d", c.Servers[server].FullAddress())
+				}
+				select {
+				case msg := <-client.GetMessage():
+					log.Logf(log.Info, "Result: %s", string(msg))
+					continue
+				case <-time.After(5 * time.Second):
+					log.Log(log.Info, "No result received")
+					continue
+				}
+				client.Close()
 			}
-			client.Close()
+			if input.BasicInput[string]("Do you want to ask for another result? [y/n]: ").AddCheck(func(s string) bool {
+				return s == "y" || s == "n"
+			}, "Please enter a valid answer").Read() == "n" {
+				break
+			}
 		}
 	}
 
