@@ -26,4 +26,16 @@ func main() {
 			client.Close()
 		}
 	}
+
+	// ask for result for a chosen server
+	server := input.BasicInput[int]("Choose a server to ask for the result [0-%d]: ", len(c.Servers)-1).AddCheck(func(i int) bool {
+		return i >= 0 && i < len(c.Servers)
+	}, "Please enter a valid server id").Read()
+
+	if client, err := CreateClient(c.Servers[server]); err == nil {
+		client.Send([]byte("result"))
+		result := <-client.GetMessage()
+		log.Logf(log.Info, "Result from server %d: %s", server, result)
+		client.Close()
+	}
 }

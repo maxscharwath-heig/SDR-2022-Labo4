@@ -50,9 +50,9 @@ func (i Input[T]) Read() T {
 	}
 }
 
-func StringInput(label string) Input[string] {
+func StringInput(label string, args ...interface{}) Input[string] {
 	return Input[string]{
-		label:        label,
+		label:        fmt.Sprintf(label, args...),
 		errorMessage: "Please enter a valid string",
 		checks:       []checkFunc[string]{},
 		read: func() (string, error) {
@@ -63,9 +63,9 @@ func StringInput(label string) Input[string] {
 	}
 }
 
-func BasicInput[T any](label string) Input[T] {
+func BasicInput[T any](label string, args ...interface{}) Input[T] {
 	return Input[T]{
-		label:        label,
+		label:        fmt.Sprintf(label, args...),
 		errorMessage: "Please enter a valid input",
 		checks:       []checkFunc[T]{},
 		read: func() (T, error) {

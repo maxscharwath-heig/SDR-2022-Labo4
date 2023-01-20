@@ -77,6 +77,8 @@ func (w *Wave) Run() {
 		}
 	}
 	log.Logf(log.Info, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
+
+	w.respondToClient()
 }
 
 func (w *Wave) isTopologyComplete() bool {
@@ -96,7 +98,7 @@ func (w *Wave) send(active bool, neighbour int) {
 }
 
 func (w *Wave) receive() (Message, error) {
-	data := <-w.server.GetMessage()
+	data := (<-w.server.GetMessage()).Data
 	var message Message
 	if err := json.Unmarshal(data, &message); err != nil {
 		return message, err
@@ -107,6 +109,11 @@ func (w *Wave) receive() (Message, error) {
 
 func (w *Wave) waitForClient() {
 	log.Log(log.Info, "Waiting for client to send data")
-	word := string(<-w.server.GetMessage())
+	word := string((<-w.server.GetMessage()).Data)
 	log.Logf(log.Info, "Server %d received word: %s", w.server.GetId(), word)
+}
+
+func (w *Wave) respondToClient() {
+	client := <-w.server.GetMessage()
+	client.Reply([]byte(fmt.Sprintf("%v", w.data)))
 }

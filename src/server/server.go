@@ -6,12 +6,23 @@ import (
 	"net"
 )
 
+type Message struct {
+	server *Server
+	From   *net.UDPAddr
+	Data   []byte
+}
+
+func (m *Message) Reply(data []byte) (err error) {
+	_, err = m.server.conn.WriteToUDP(data, m.From)
+	return
+}
+
 type Server struct {
 	config   config.Config
 	id       int
 	conn     *net.UDPConn
 	address  *net.UDPAddr
-	messages chan []byte
+	messages chan Message
 }
 
 func CreateServer(config *config.Config, id int) (*Server, error) {
@@ -24,7 +35,7 @@ func CreateServer(config *config.Config, id int) (*Server, error) {
 		config:   *config,
 		id:       id,
 		address:  address,
-		messages: make(chan []byte),
+		messages: make(chan Message),
 	}, nil
 }
 
@@ -40,7 +51,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) GetMessage() chan []byte {
+func (s *Server) GetMessage() chan Message {
 	return s.messages
 }
 
@@ -75,12 +86,16 @@ func (s *Server) processMessage() {
 	for {
 		log.Logf(log.Debug, "Server %d waiting for message", s.id)
 		buffer := make([]byte, 1024)
-		n, _, err := s.conn.ReadFromUDP(buffer)
+		n, from, err := s.conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.Log(log.Debug, "Client closed")
 			return
 		}
 		log.Logf(log.Trace, "Raw message from server %d: %s", s.id, buffer[:n])
-		s.messages <- buffer[:n]
+		s.messages <- Message{
+			server: s,
+			From:   from,
+			Data:   buffer[:n],
+		}
 	}
 }
