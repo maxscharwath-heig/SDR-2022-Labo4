@@ -14,7 +14,7 @@ const (
 )
 
 type PEMessage struct {
-	msgType MessageType  `json:"type"`
+	MsgType MessageType  `json:"type"`
 	From    int          `json:"from"` // Utilisé si Probe
 	Data    map[int]Data `json:"data"` // Utilisé si Probe
 }
@@ -76,7 +76,7 @@ func (pe *ProbeAndEchoes) StartAsNode() {
 
 func (pe *ProbeAndEchoes) send(msgType MessageType, neighbour int) {
 	message := PEMessage{
-		msgType: msgType,
+		MsgType: msgType,
 		From:    pe.server.GetId(),
 		Data:    pe.data,
 	}
@@ -86,7 +86,7 @@ func (pe *ProbeAndEchoes) send(msgType MessageType, neighbour int) {
 }
 
 func (pe *ProbeAndEchoes) receive() (PEMessage, error) {
-	data := <-pe.server.GetMessage()
+	data := (<-pe.server.GetMessage()).Data
 	var message PEMessage
 	if err := json.Unmarshal(data, &message); err != nil {
 		return message, err
