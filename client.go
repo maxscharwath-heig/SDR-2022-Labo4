@@ -38,8 +38,23 @@ func main() {
 				return s >= 0 && s < len(c.Servers)
 			}, "Please enter a valid server").Read()
 
-			// TODO: Send the word to a server
-			log.Logf(log.Info, "Sent \"%s\" to server %d", word, c.Servers[root].FullAddress())
+			for i, server := range c.Servers {
+				if client, err := CreateClient(server); err == nil {
+					var toSend string
+					if root == i {
+						toSend = word
+					} else {
+						toSend = "wait"
+					}
+
+					if err := client.Send([]byte(toSend)); err != nil {
+						log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, server, err)
+					} else {
+						log.Logf(log.Info, "Sent \"%s\" to server %d", word, server.FullAddress())
+					}
+					client.Close()
+				}
+			}
 
 		} else {
 			log.Logf(log.Error, "Invalid mode %d selected, valid modes are: <1 | 2>", *clientMode)

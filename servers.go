@@ -30,16 +30,12 @@ func main() {
 	} else if *serverMode == 2 {
 		// Probes & Echoes mode
 		servers := initServers(c)
-
 		for i, server := range servers {
 			probes := algo.NewProbesAndEchoes(*server)
 			if i != 0 {
-				go probes.StartAsNode()
+				go probes.Start()
 			}
 		}
-		// Start the first server as the "root"
-		root := algo.NewProbesAndEchoes(*servers[0])
-		go root.StartAsRoot()
 	} else {
 		log.Logf(log.Error, "Invalid mode %d selected, valid modes are: <1 | 2>", *serverMode)
 		os.Exit(1)

@@ -38,7 +38,18 @@ func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
 	return s
 }
 
-func (pe *ProbeAndEchoes) StartAsRoot() {
+func (pe *ProbeAndEchoes) Start() {
+	// Wait on client message
+	word := pe.waitForClient()
+
+	if word == "wait" {
+		pe.startAsNode()
+	} else {
+		pe.startAsRoot()
+	}
+}
+
+func (pe *ProbeAndEchoes) startAsRoot() {
 	log.Logf(log.Info, "P&E algorithm started on server %d as the root", pe.server.GetId())
 
 	for neighbour := range pe.neighbours {
@@ -54,7 +65,7 @@ func (pe *ProbeAndEchoes) StartAsRoot() {
 	log.Logf(log.Info, "Server %d (root) as received all echoes", pe.server.GetId())
 }
 
-func (pe *ProbeAndEchoes) StartAsNode() {
+func (pe *ProbeAndEchoes) startAsNode() {
 	log.Logf(log.Info, "P&E algorithm started on server %d as a node", pe.server.GetId())
 	message, _ := pe.receive()
 
@@ -94,4 +105,11 @@ func (pe *ProbeAndEchoes) receive() (PEMessage, error) {
 	}
 	log.Logf(log.Info, "Server %d got &s", pe.server.GetId(), message)
 	return message, nil
+}
+
+func (pe *ProbeAndEchoes) waitForClient() string {
+	log.Log(log.Info, "Waiting for client to send data")
+	word := string((<-pe.server.GetMessage()).Data)
+	log.Logf(log.Info, "Server %d received word: %s", pe.server.GetId(), word)
+	return word
 }
