@@ -106,7 +106,7 @@ func (w *Wave) receive() (Message, error) {
 
 func (w *Wave) waitForClient() {
 	log.Log(log.Info, "Waiting for client to send data")
-	word := string((<-w.server.GetMessage()).Data)
+	word := string((<-w.server.GetClientMessage()).Data)
 	log.Logf(log.Info, "Server %d received word: %s", w.server.GetId(), word)
 
 	counter := CountLetter(word, w.server.GetConfig().Letter)
@@ -115,6 +115,6 @@ func (w *Wave) waitForClient() {
 }
 
 func (w *Wave) respondToClient() {
-	client := <-w.server.GetMessage()
+	client := <-w.server.GetClientMessage()
 	client.Reply([]byte(fmt.Sprintf("%v", w.data)))
 }

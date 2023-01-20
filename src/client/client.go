@@ -2,18 +2,18 @@ package client
 
 import (
 	"SDR-Labo4/src/config"
+	"SDR-Labo4/src/network"
 	"SDR-Labo4/src/utils/log"
 	"net"
 )
 
 type Client struct {
-	conn     *net.UDPConn
+	conn     network.Connection
 	messages chan []byte
 }
 
-func (c *Client) Send(data []byte) (err error) {
-	_, err = c.conn.Write(data)
-	return
+func (c *Client) Send(data []byte) error {
+	return c.conn.Send(network.CodeClient, data)
 }
 
 func (c *Client) GetMessage() chan []byte {
@@ -44,7 +44,7 @@ func CreateClient(server config.ServerConfig) (*Client, error) {
 		return nil, err
 	}
 	client := &Client{
-		conn: conn,
+		conn: network.Connection{UDPConn: conn},
 	}
 	go client.processMessage()
 	return client, nil
