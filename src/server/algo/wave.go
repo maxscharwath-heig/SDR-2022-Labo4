@@ -7,8 +7,6 @@ import (
 	"fmt"
 )
 
-type Data = string
-
 type Message struct {
 	From   int          `json:"from"`
 	Active bool         `json:"active"`
@@ -33,7 +31,6 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 		data:       make(map[int]Data),
 		neighbours: make(map[int]bool),
 	}
-	w.data[server.GetId()] = server.GetConfig().Letter
 	for _, neighbour := range server.GetNeighbours() {
 		w.neighbours[neighbour] = true
 	}
@@ -111,6 +108,10 @@ func (w *Wave) waitForClient() {
 	log.Log(log.Info, "Waiting for client to send data")
 	word := string((<-w.server.GetMessage()).Data)
 	log.Logf(log.Info, "Server %d received word: %s", w.server.GetId(), word)
+
+	counter := CountLetter(word, w.server.GetConfig().Letter)
+	log.Logf(log.Info, "Server %d found %d %s", w.server.GetId(), counter, w.server.GetConfig().Letter)
+	w.data[w.server.GetId()] = counter
 }
 
 func (w *Wave) respondToClient() {

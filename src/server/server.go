@@ -84,7 +84,6 @@ func (s *Server) GetConfig() config.ServerConfig {
 
 func (s *Server) processMessage() {
 	for {
-		log.Logf(log.Debug, "Server %d waiting for message", s.id)
 		buffer := make([]byte, 1024)
 		n, from, err := s.conn.ReadFromUDP(buffer)
 		if err != nil {

@@ -33,7 +33,8 @@ func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
 		neighbours: server.GetNeighbours(),
 		parent:     -1,
 	}
-	s.data[server.GetId()] = server.GetConfig().Letter
+	//TODO Change this
+	s.data[server.GetId()] = CountLetter("hello world", server.GetConfig().Letter)
 	return s
 }
 
