@@ -36,7 +36,6 @@ func (s *Server) Start() error {
 		return err
 	}
 	s.conn = conn
-	log.Logf(log.Info, "Server %d started", s.id)
 	go s.processMessage()
 	return nil
 }
@@ -74,12 +73,14 @@ func (s *Server) GetConfig() config.ServerConfig {
 
 func (s *Server) processMessage() {
 	for {
+		log.Logf(log.Debug, "Server %d waiting for message", s.id)
 		buffer := make([]byte, 1024)
 		n, _, err := s.conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Logf(log.Error, "Error reading from server %d: %s", s.id, err)
+			log.Log(log.Debug, "Client closed")
 			return
 		}
+		log.Logf(log.Trace, "Raw message from server %d: %s", s.id, buffer[:n])
 		s.messages <- buffer[:n]
 	}
 }

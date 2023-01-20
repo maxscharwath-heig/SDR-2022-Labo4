@@ -42,6 +42,9 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 
 func (w *Wave) Run() {
 	log.Logf(log.Info, "Starting wave algorithm on server %d", w.server.GetId())
+
+	w.waitForClient()
+
 	for !w.isTopologyComplete() {
 
 		// Send message to neighbours
@@ -50,10 +53,9 @@ func (w *Wave) Run() {
 		}
 
 		// Receive messages from neighbours
-		for neighbour := range w.neighbours {
+		for _ = range w.neighbours {
 			message, _ := w.receive()
-			log.Logf(log.Trace, "Server %d received message from %d: %s", w.server.GetId(), neighbour, message)
-			w.neighbours[neighbour] = message.Active
+			w.neighbours[message.From] = message.Active
 			// Update data
 			for id, data := range message.Data {
 				if _, ok := w.data[id]; !ok {
@@ -70,6 +72,7 @@ func (w *Wave) Run() {
 	}
 	for _, active := range w.neighbours {
 		if active {
+			log.Logf(log.Warn, "Server %d is purging", w.server.GetId())
 			_, _ = w.receive()
 		}
 	}
@@ -86,6 +89,7 @@ func (w *Wave) send(active bool, neighbour int) {
 		Active: active,
 		Data:   w.data,
 	}
+	log.Logf(log.Trace, "Server %d sending message to %d: %s", w.server.GetId(), neighbour, message)
 	if data, err := json.Marshal(message); err == nil {
 		w.server.Send(data, neighbour)
 	}
@@ -97,5 +101,12 @@ func (w *Wave) receive() (Message, error) {
 	if err := json.Unmarshal(data, &message); err != nil {
 		return message, err
 	}
+	log.Logf(log.Trace, "Server %d received message from %d: %s", w.server.GetId(), message.From, message)
 	return message, nil
+}
+
+func (w *Wave) waitForClient() {
+	log.Log(log.Info, "Waiting for client to send data")
+	word := string(<-w.server.GetMessage())
+	log.Logf(log.Info, "Server %d received word: %s", w.server.GetId(), word)
 }
