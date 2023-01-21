@@ -5,6 +5,7 @@ import (
 	"SDR-Labo4/src/config"
 	"SDR-Labo4/src/utils/input"
 	"SDR-Labo4/src/utils/log"
+	"encoding/json"
 	"flag"
 	"time"
 )
@@ -74,20 +75,21 @@ func main() {
 				}
 				select {
 				case msg := <-client.GetMessage():
-					log.Logf(log.Info, "Result: %s", string(msg))
-					continue
+					PrintResult(msg, word)
 				case <-time.After(5 * time.Second):
 					log.Log(log.Info, "No result received")
-					continue
 				}
 				client.Close()
 			}
-			if input.BasicInput[string]("Do you want to ask for another result? [y/n]: ").AddCheck(func(s string) bool {
-				return s == "y" || s == "n"
-			}, "Please enter a valid answer").Read() == "n" {
-				break
-			}
 		}
 	}
+}
 
+func PrintResult(msg []byte, word string) {
+	var objmap map[string]int
+	json.Unmarshal(msg, &objmap)
+	log.Logf(log.Info, "Result for \"%s\":", word)
+	for k, v := range objmap {
+		log.Logf(log.Info, "%s: %d", k, v)
+	}
 }

@@ -9,9 +9,9 @@ import (
 )
 
 type Message struct {
-	From   int          `json:"from"`
-	Active bool         `json:"active"`
-	Data   map[int]Data `json:"data"`
+	From   int             `json:"from"`
+	Active bool            `json:"active"`
+	Data   map[string]Data `json:"data"`
 }
 
 func (m Message) String() string {
@@ -21,7 +21,7 @@ func (m Message) String() string {
 type Wave struct {
 	server     server.Server
 	nbNodes    int
-	data       map[int]Data
+	data       map[string]Data
 	neighbours map[int]bool
 }
 
@@ -29,7 +29,7 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 	w := &Wave{
 		server:     server,
 		nbNodes:    nbNodes,
-		data:       make(map[int]Data),
+		data:       make(map[string]Data),
 		neighbours: make(map[int]bool),
 	}
 	for _, neighbour := range server.GetConfig().Neighbours {
@@ -52,9 +52,9 @@ func (w *Wave) Run() {
 		for neighbour := range w.neighbours {
 			message, _ := w.receive()
 
-			for id, data := range message.Data {
-				if _, ok := w.data[id]; !ok {
-					w.data[id] = data
+			for key, data := range message.Data {
+				if _, ok := w.data[key]; !ok {
+					w.data[key] = data
 				}
 			}
 
@@ -124,9 +124,10 @@ func (w *Wave) waitForClient() {
 		select {
 		case message := <-w.server.GetClientMessage():
 			word := string(message.Data)
-			counter := CountLetter(word, w.server.GetConfig().Letter)
+			letter := w.server.GetConfig().Letter
+			counter := CountLetter(word, letter)
 			log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, w.server.GetConfig().Letter, word)
-			w.data[w.server.GetId()] = counter
+			w.data[letter] = counter
 			return
 		}
 	}
@@ -137,7 +138,9 @@ func (w *Wave) respondToClient() {
 	for {
 		select {
 		case message := <-w.server.GetClientMessage():
-			_ = message.Reply([]byte(fmt.Sprintf("%v", w.data)))
+			if data, err := json.Marshal(w.data); err == nil {
+				_ = message.Reply(data)
+			}
 		}
 	}
 }
