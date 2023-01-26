@@ -51,7 +51,7 @@ func main() {
 					if err := client.Send(message); err != nil {
 						log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, server, err)
 					} else {
-						log.Logf(log.Info, "Sent \"%s\" to server %d", word, server.FullAddress())
+						log.Logf(log.Info, "Sent \"%s\" to server %d", message, server.FullAddress())
 					}
 					client.Close()
 				}

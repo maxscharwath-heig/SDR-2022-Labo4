@@ -14,15 +14,16 @@ const (
 	Echo  MessageType = "Echo"
 )
 
-type PEMessage struct {
-	MsgType MessageType  `json:"type"`
-	From    int          `json:"from"` // Utilisé si Probe
-	Data    map[int]Data `json:"data"` // Utilisé si Probe
+type peMessage struct {
+	MsgType MessageType     `json:"type"`
+	From    int             `json:"from"` // Utilisé si Probe
+	Data    map[string]Data `json:"data"` // Utilisé si Echo
+	Word    string          `json:"word"` // Utilisé si Probe
 }
 
 type ProbeAndEchoes struct {
 	server     server.Server
-	data       map[int]Data
+	data       map[string]Data
 	neighbours []int
 	parent     int
 	pending    chan client.Message
@@ -31,7 +32,7 @@ type ProbeAndEchoes struct {
 func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
 	s := &ProbeAndEchoes{
 		server:     server,
-		data:       make(map[int]Data),
+		data:       make(map[string]Data),
 		neighbours: server.GetNeighbours(),
 		parent:     -1,
 		pending:    make(chan client.Message),
@@ -44,6 +45,7 @@ func (pe *ProbeAndEchoes) Run() {
 	for {
 		select {
 		case message := <-pe.pending:
+			log.Logf(log.Info, "Server %d received start message: %v", pe.server.GetId(), message)
 			switch message.Type {
 			case "start":
 				pe.startAsRoot(message.Data)
@@ -56,9 +58,14 @@ func (pe *ProbeAndEchoes) Run() {
 
 func (pe *ProbeAndEchoes) startAsRoot(word string) {
 	log.Logf(log.Info, "P&E algorithm started on server %d as the root", pe.server.GetId())
-	pe.data[pe.server.GetId()] = CountLetter(word, pe.server.GetConfig().Letter)
+
+	letter := pe.server.GetConfig().Letter
+	counter := CountLetter(word, letter)
+	log.Logf(log.Info, "Server %d found %d %s in %s", pe.server.GetId(), counter, letter, word)
+	pe.data[letter] = counter
+
 	for neighbour := range pe.neighbours {
-		pe.send(Probe, neighbour)
+		pe.send(Probe, word, neighbour)
 		log.Logf(log.Info, "Server %d sent %s", pe.server.GetId(), Probe)
 	}
 
@@ -74,13 +81,19 @@ func (pe *ProbeAndEchoes) startAsNode() {
 	log.Logf(log.Info, "P&E algorithm started on server %d as a node", pe.server.GetId())
 	message, _ := pe.receive()
 
-	text := message.Data
+	word := message.Word
+
+	letter := pe.server.GetConfig().Letter
+	counter := CountLetter(word, letter)
+	log.Logf(log.Info, "Server %d found %d %s in %s", pe.server.GetId(), counter, letter, word)
+	pe.data[letter] = counter
+
 	pe.parent = message.From
 
 	for i, neighbour := range pe.neighbours {
 		if i != pe.parent {
-			log.Logf(log.Info, "Server %d sent %s, content: %s", pe.server.GetId(), Probe, text)
-			pe.send(Probe, neighbour) // TODO: send text
+			log.Logf(log.Info, "Server %d sent %s, content: %s", pe.server.GetId(), Probe, word)
+			pe.send(Probe, word, neighbour) // TODO: send text
 		}
 	}
 
@@ -88,35 +101,29 @@ func (pe *ProbeAndEchoes) startAsNode() {
 		pe.receive()
 	}
 
-	pe.send(Echo, pe.parent)
+	pe.send(Echo, word, pe.parent)
 }
 
-func (pe *ProbeAndEchoes) send(msgType MessageType, neighbour int) {
-	message := PEMessage{
+func (pe *ProbeAndEchoes) send(msgType MessageType, word string, neighbour int) {
+	message := peMessage{
 		MsgType: msgType,
 		From:    pe.server.GetId(),
 		Data:    pe.data,
+		Word:    word,
 	}
 	if data, err := json.Marshal(message); err == nil {
 		pe.server.Send(data, neighbour)
 	}
 }
 
-func (pe *ProbeAndEchoes) receive() (PEMessage, error) {
+func (pe *ProbeAndEchoes) receive() (peMessage, error) {
 	data := (<-pe.server.GetMessage()).Data
-	var message PEMessage
+	var message peMessage
 	if err := json.Unmarshal(data, &message); err != nil {
 		return message, err
 	}
 	log.Logf(log.Info, "Server %d got &s", pe.server.GetId(), message)
 	return message, nil
-}
-
-func (pe *ProbeAndEchoes) waitForClient() string {
-	log.Log(log.Info, "Waiting for client to send data")
-	word := string((<-pe.server.GetMessage()).Data)
-	log.Logf(log.Info, "Server %d received word: %s", pe.server.GetId(), word)
-	return word
 }
 
 func (pe *ProbeAndEchoes) parseClientMessage() {
@@ -130,6 +137,8 @@ func (pe *ProbeAndEchoes) parseClientMessage() {
 			}
 			switch m.Type {
 			case "start":
+				go func() { pe.pending <- m }()
+			case "probe":
 				go func() { pe.pending <- m }()
 			case "result":
 				if data, err := json.Marshal(pe.data); err == nil {

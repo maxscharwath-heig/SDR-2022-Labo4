@@ -9,13 +9,13 @@ import (
 	"sort"
 )
 
-type Message struct {
+type waveMessage struct {
 	From   int             `json:"from"`
 	Active bool            `json:"active"`
 	Data   map[string]Data `json:"data"`
 }
 
-func (m Message) String() string {
+func (m waveMessage) String() string {
 	return fmt.Sprintf("Data from %d, active: %t, data: %v", m.From, m.Active, m.Data)
 }
 
@@ -96,7 +96,7 @@ func (w *Wave) isTopologyComplete() bool {
 }
 
 func (w *Wave) send(active bool, neighbour int) {
-	message := Message{
+	message := waveMessage{
 		From:   w.server.GetId(),
 		Active: active,
 		Data:   w.data,
@@ -107,11 +107,11 @@ func (w *Wave) send(active bool, neighbour int) {
 	}
 }
 
-func (w *Wave) receive() (Message, error) {
+func (w *Wave) receive() (waveMessage, error) {
 	for {
 		select {
 		case message := <-w.server.GetMessage():
-			var m Message
+			var m waveMessage
 			if err := json.Unmarshal(message.Data, &m); err != nil {
 				return m, err
 			}
@@ -126,7 +126,7 @@ func (w *Wave) waitStart() {
 	case word := <-w.pending:
 		letter := w.server.GetConfig().Letter
 		counter := CountLetter(word, letter)
-		log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, w.server.GetConfig().Letter, word)
+		log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, letter, word)
 		w.data[letter] = counter
 	}
 }
