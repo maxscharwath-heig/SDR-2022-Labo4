@@ -1,6 +1,7 @@
 package algo
 
 import (
+	"SDR-Labo4/src/client"
 	"SDR-Labo4/src/server"
 	"SDR-Labo4/src/utils/log"
 	"encoding/json"
@@ -24,6 +25,7 @@ type ProbeAndEchoes struct {
 	data       map[int]Data
 	neighbours []int
 	parent     int
+	pending    chan client.Message
 }
 
 func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
@@ -32,26 +34,29 @@ func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
 		data:       make(map[int]Data),
 		neighbours: server.GetNeighbours(),
 		parent:     -1,
+		pending:    make(chan client.Message),
 	}
-	//TODO Change this
-	s.data[server.GetId()] = CountLetter("hello world", server.GetConfig().Letter)
+	go s.parseClientMessage()
 	return s
 }
 
-func (pe *ProbeAndEchoes) Start() {
-	// Wait on client message
-	word := pe.waitForClient()
-
-	if word == "wait" {
-		pe.startAsNode()
-	} else {
-		pe.startAsRoot()
+func (pe *ProbeAndEchoes) Run() {
+	for {
+		select {
+		case message := <-pe.pending:
+			switch message.Type {
+			case "start":
+				pe.startAsRoot(message.Data)
+			case "probe":
+				pe.startAsNode()
+			}
+		}
 	}
 }
 
-func (pe *ProbeAndEchoes) startAsRoot() {
+func (pe *ProbeAndEchoes) startAsRoot(word string) {
 	log.Logf(log.Info, "P&E algorithm started on server %d as the root", pe.server.GetId())
-
+	pe.data[pe.server.GetId()] = CountLetter(word, pe.server.GetConfig().Letter)
 	for neighbour := range pe.neighbours {
 		pe.send(Probe, neighbour)
 		log.Logf(log.Info, "Server %d sent %s", pe.server.GetId(), Probe)
@@ -112,4 +117,25 @@ func (pe *ProbeAndEchoes) waitForClient() string {
 	word := string((<-pe.server.GetMessage()).Data)
 	log.Logf(log.Info, "Server %d received word: %s", pe.server.GetId(), word)
 	return word
+}
+
+func (pe *ProbeAndEchoes) parseClientMessage() {
+	for {
+		select {
+		case message := <-pe.server.GetClientMessage():
+			var m client.Message
+			if err := json.Unmarshal(message.Data, &m); err != nil {
+				log.Logf(log.Error, "Error while parsing client message: %v", err)
+				continue
+			}
+			switch m.Type {
+			case "start":
+				go func() { pe.pending <- m }()
+			case "result":
+				if data, err := json.Marshal(pe.data); err == nil {
+					_ = message.Reply(data)
+				}
+			}
+		}
+	}
 }

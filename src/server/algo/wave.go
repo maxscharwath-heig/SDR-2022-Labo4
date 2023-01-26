@@ -1,6 +1,7 @@
 package algo
 
 import (
+	"SDR-Labo4/src/client"
 	"SDR-Labo4/src/server"
 	"SDR-Labo4/src/utils/log"
 	"encoding/json"
@@ -23,6 +24,7 @@ type Wave struct {
 	nbNodes    int
 	data       map[string]Data
 	neighbours map[int]bool
+	pending    chan string
 }
 
 func NewWave(server server.Server, nbNodes int) *Wave {
@@ -31,52 +33,53 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 		nbNodes:    nbNodes,
 		data:       make(map[string]Data),
 		neighbours: make(map[int]bool),
+		pending:    make(chan string),
 	}
 	for _, neighbour := range server.GetConfig().Neighbours {
 		w.neighbours[neighbour] = true
 	}
+	go w.parseClientMessage()
 	return w
 }
 
 func (w *Wave) Run() {
 	log.Logf(log.Info, "Starting wave algorithm on server %d", w.server.GetId())
+	for {
+		w.waitStart()
 
-	w.waitForClient()
+		for !w.isTopologyComplete() {
+			// Send message to activeNeigbours
+			for _, neighbour := range w.getNeighbours() {
+				w.send(true, neighbour)
+			}
 
-	for !w.isTopologyComplete() {
-		// Send message to activeNeigbours
-		for _, neighbour := range w.getNeighbours() {
-			w.send(true, neighbour)
-		}
+			for neighbour := range w.neighbours {
+				message, _ := w.receive()
 
-		for neighbour := range w.neighbours {
-			message, _ := w.receive()
+				for key, data := range message.Data {
+					if _, ok := w.data[key]; !ok {
+						w.data[key] = data
+					}
+				}
 
-			for key, data := range message.Data {
-				if _, ok := w.data[key]; !ok {
-					w.data[key] = data
+				if !message.Active {
+					log.Logf(log.Info, "Server %d is removing %d from its neighbours", w.server.GetId(), neighbour)
+					delete(w.neighbours, message.From)
 				}
 			}
-
-			if !message.Active {
-				log.Logf(log.Info, "Server %d is removing %d from its neighbours", w.server.GetId(), neighbour)
-				delete(w.neighbours, message.From)
-			}
 		}
-	}
 
-	for _, neighbour := range w.getNeighbours() {
-		w.send(false, neighbour)
-	}
+		for _, neighbour := range w.getNeighbours() {
+			w.send(false, neighbour)
+		}
 
-	for _, neighbour := range w.getNeighbours() {
-		log.Logf(log.Warn, "Server %d is purging %d", w.server.GetId(), neighbour)
-		_, _ = w.receive()
-		log.Logf(log.Warn, "Server %d purged %d", w.server.GetId(), neighbour)
+		for _, neighbour := range w.getNeighbours() {
+			log.Logf(log.Warn, "Server %d is purging %d", w.server.GetId(), neighbour)
+			_, _ = w.receive()
+			log.Logf(log.Warn, "Server %d purged %d", w.server.GetId(), neighbour)
+		}
+		log.Logf(log.Error, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
 	}
-	log.Logf(log.Error, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
-
-	w.respondToClient()
 }
 
 func (w *Wave) getNeighbours() []int {
@@ -118,28 +121,32 @@ func (w *Wave) receive() (Message, error) {
 	}
 }
 
-func (w *Wave) waitForClient() {
-	// wait for the client to be ready
-	for {
-		select {
-		case message := <-w.server.GetClientMessage():
-			word := string(message.Data)
-			letter := w.server.GetConfig().Letter
-			counter := CountLetter(word, letter)
-			log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, w.server.GetConfig().Letter, word)
-			w.data[letter] = counter
-			return
-		}
+func (w *Wave) waitStart() {
+	select {
+	case word := <-w.pending:
+		letter := w.server.GetConfig().Letter
+		counter := CountLetter(word, letter)
+		log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, w.server.GetConfig().Letter, word)
+		w.data[letter] = counter
 	}
 }
 
-func (w *Wave) respondToClient() {
-	// the process is done, send the result to the client
+func (w *Wave) parseClientMessage() {
 	for {
 		select {
 		case message := <-w.server.GetClientMessage():
-			if data, err := json.Marshal(w.data); err == nil {
-				_ = message.Reply(data)
+			var m client.Message
+			if err := json.Unmarshal(message.Data, &m); err != nil {
+				log.Logf(log.Error, "Error while parsing client message: %v", err)
+				continue
+			}
+			switch m.Type {
+			case "start":
+				go func() { w.pending <- m.Data }()
+			case "result":
+				if data, err := json.Marshal(w.data); err == nil {
+					_ = message.Reply(data)
+				}
 			}
 		}
 	}

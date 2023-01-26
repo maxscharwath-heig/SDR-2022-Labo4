@@ -26,7 +26,7 @@ func main() {
 
 			for _, server := range c.Servers {
 				if client, err := CreateClient(server); err == nil {
-					if err := client.Send([]byte(word)); err != nil {
+					if err := client.Send(Message{Type: "start", Data: word}); err != nil {
 						log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, server, err)
 					} else {
 						log.Logf(log.Info, "Sent \"%s\" to server %d", word, server.FullAddress())
@@ -41,14 +41,14 @@ func main() {
 
 			for i, server := range c.Servers {
 				if client, err := CreateClient(server); err == nil {
-					var toSend string
+					var message Message
 					if root == i {
-						toSend = word
+						message = Message{Type: "start", Data: word}
 					} else {
-						toSend = "wait"
+						message = Message{Type: "probe"}
 					}
 
-					if err := client.Send([]byte(toSend)); err != nil {
+					if err := client.Send(message); err != nil {
 						log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, server, err)
 					} else {
 						log.Logf(log.Info, "Sent \"%s\" to server %d", word, server.FullAddress())
@@ -68,7 +68,7 @@ func main() {
 			}, "Please enter a valid server id").Read()
 
 			if client, err := CreateClient(c.Servers[server]); err == nil {
-				if err := client.Send([]byte("result")); err != nil {
+				if err := client.Send(Message{Type: "result"}); err != nil {
 					log.Logf(log.Error, "Error sending \"result\" to %s: %s", c.Servers[server], err)
 				} else {
 					log.Logf(log.Info, "Sent \"result\" to server %d", c.Servers[server].FullAddress())
@@ -86,10 +86,10 @@ func main() {
 }
 
 func PrintResult(msg []byte, word string) {
-	var objmap map[string]int
-	json.Unmarshal(msg, &objmap)
+	var objdump map[string]int
+	json.Unmarshal(msg, &objdump)
 	log.Logf(log.Info, "Result for \"%s\":", word)
-	for k, v := range objmap {
+	for k, v := range objdump {
 		log.Logf(log.Info, "%s: %d", k, v)
 	}
 }

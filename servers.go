@@ -33,7 +33,7 @@ func main() {
 		for i, server := range servers {
 			probes := algo.NewProbesAndEchoes(*server)
 			if i != 0 {
-				go probes.Start()
+				go probes.Run()
 			}
 		}
 	} else {

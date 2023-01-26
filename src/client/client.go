@@ -4,15 +4,25 @@ import (
 	"SDR-Labo4/src/config"
 	"SDR-Labo4/src/network"
 	"SDR-Labo4/src/utils/log"
+	"encoding/json"
 	"net"
 )
+
+type Message struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
 
 type Client struct {
 	conn     network.Connection
 	messages chan []byte
 }
 
-func (c *Client) Send(data []byte) error {
+func (c *Client) Send(message Message) error {
+	data, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
 	return c.conn.Send(network.CodeClient, data)
 }
 
