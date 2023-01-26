@@ -122,6 +122,14 @@ func (pe *ProbeAndEchoes) receive() (peMessage, error) {
 	if err := json.Unmarshal(data, &message); err != nil {
 		return message, err
 	}
+
+	// Update data
+	for key, data := range message.Data {
+		if _, ok := pe.data[key]; !ok {
+			pe.data[key] = data
+		}
+	}
+
 	log.Logf(log.Info, "Server %d got &s", pe.server.GetId(), message)
 	return message, nil
 }
