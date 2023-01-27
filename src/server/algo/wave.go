@@ -23,7 +23,8 @@ type Wave struct {
 	server     server.Server
 	nbNodes    int
 	data       map[string]Data
-	neighbours map[int]bool
+	neighbours map[int]any
+	receivers  map[int]chan waveMessage
 	pending    chan string
 }
 
@@ -32,13 +33,12 @@ func NewWave(server server.Server, nbNodes int) *Wave {
 		server:     server,
 		nbNodes:    nbNodes,
 		data:       make(map[string]Data),
-		neighbours: make(map[int]bool),
+		neighbours: make(map[int]any),
+		receivers:  make(map[int]chan waveMessage),
 		pending:    make(chan string),
 	}
-	for _, neighbour := range server.GetConfig().Neighbours {
-		w.neighbours[neighbour] = true
-	}
 	go w.parseClientMessage()
+	go w.receive()
 	return w
 }
 
@@ -46,7 +46,6 @@ func (w *Wave) Run() {
 	log.Logf(log.Info, "Starting wave algorithm on server %d", w.server.GetId())
 	for {
 		w.waitStart()
-
 		for !w.isTopologyComplete() {
 			// Send message to activeNeigbours
 			for _, neighbour := range w.getNeighbours() {
@@ -54,7 +53,7 @@ func (w *Wave) Run() {
 			}
 
 			for neighbour := range w.neighbours {
-				message, _ := w.receive()
+				message := <-w.receivers[neighbour]
 
 				for key, data := range message.Data {
 					if _, ok := w.data[key]; !ok {
@@ -74,11 +73,20 @@ func (w *Wave) Run() {
 		}
 
 		for _, neighbour := range w.getNeighbours() {
-			log.Logf(log.Warn, "Server %d is purging %d", w.server.GetId(), neighbour)
-			_, _ = w.receive()
-			log.Logf(log.Warn, "Server %d purged %d", w.server.GetId(), neighbour)
+			<-w.receivers[neighbour]
+			log.Logf(log.Info, "Server %d purged %d", w.server.GetId(), neighbour)
 		}
-		log.Logf(log.Error, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
+		log.Logf(log.Info, "Wave algorithm on server %d is done with data: %v", w.server.GetId(), w.data)
+	}
+}
+
+func (w *Wave) init() {
+	w.data = make(map[string]Data)
+	w.neighbours = make(map[int]any)
+	w.receivers = make(map[int]chan waveMessage)
+	for _, neighbour := range w.server.GetNeighbours() {
+		w.neighbours[neighbour] = struct{}{}
+		w.receivers[neighbour] = make(chan waveMessage)
 	}
 }
 
@@ -101,22 +109,23 @@ func (w *Wave) send(active bool, neighbour int) {
 		Active: active,
 		Data:   w.data,
 	}
-	log.Logf(log.Info, "Server %d is sending %v to %d", w.server.GetId(), message, neighbour)
+	log.Logf(log.Debug, "Server %d is sending %v to %d", w.server.GetId(), message, neighbour)
 	if data, err := json.Marshal(message); err == nil {
 		w.server.Send(data, neighbour)
 	}
 }
 
-func (w *Wave) receive() (waveMessage, error) {
+func (w *Wave) receive() {
 	for {
 		select {
 		case message := <-w.server.GetMessage():
 			var m waveMessage
 			if err := json.Unmarshal(message.Data, &m); err != nil {
-				return m, err
+				log.Logf(log.Error, "Error while parsing server message: %v", err)
+				continue
 			}
-			log.Logf(log.Info, "Server %d received %v", w.server.GetId(), m)
-			return m, nil
+			log.Logf(log.Debug, "Server %d received %v", w.server.GetId(), m)
+			go func() { w.receivers[m.From] <- m }()
 		}
 	}
 }
@@ -124,9 +133,10 @@ func (w *Wave) receive() (waveMessage, error) {
 func (w *Wave) waitStart() {
 	select {
 	case word := <-w.pending:
+		w.init() // Reset data
 		letter := w.server.GetConfig().Letter
 		counter := CountLetter(word, letter)
-		log.Logf(log.Info, "Server %d found %d %s in %s", w.server.GetId(), counter, letter, word)
+		log.Logf(log.Debug, "Server %d found %d %s in %s", w.server.GetId(), counter, letter, word)
 		w.data[letter] = counter
 	}
 }
