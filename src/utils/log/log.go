@@ -21,14 +21,23 @@ var (
 	Fatal = LogLevel{"\033[0;35m", "FATAL", 5}
 )
 
-var logLevel = Trace
+var logLevel = 0
+var logEnabled = true
 
 func SetLogLevel(level LogLevel) {
+	logLevel = level.level
+}
+
+func SetLogLevelByValue(level int) {
 	logLevel = level
 }
 
+func SetLogEnabled(enabled bool) {
+	logEnabled = enabled
+}
+
 func Log(level LogLevel, message string) {
-	if level.level >= logLevel.level {
+	if logEnabled && level.level >= logLevel {
 		timestamp := time.Now().Format("15:04:05")
 		colorReset := "\033[0m"
 		message = fmt.Sprintf("%s%s [%s]%s: %s", level.color, timestamp, level.name, colorReset, message)

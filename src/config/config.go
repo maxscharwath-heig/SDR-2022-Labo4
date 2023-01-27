@@ -4,14 +4,21 @@
 package config
 
 import (
+	"SDR-Labo4/src/utils/log"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 )
 
+type LogConfig struct {
+	Enabled bool `json:"enabled"`
+	Level   int  `json:"level"`
+}
+
 type Config struct {
 	Servers []ServerConfig `json:"servers"`
+	Log     LogConfig      `json:"log"`
 }
 
 type ServerConfig struct {
@@ -41,10 +48,9 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	/*
-		utils.SetLogEnabled(config.Logs)
-		utils.SetDebugEnabled(config.Debug)
-		utils.SetDebugDuration(config.DebugDuration * time.Millisecond)
-	*/
+
+	log.SetLogEnabled(config.Log.Enabled)
+	log.SetLogLevelByValue(config.Log.Level)
+
 	return config, nil
 }
