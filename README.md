@@ -30,7 +30,8 @@ La configuration des serveurs se trouve dans le fichier [`config.json`](./config
 ```
 
 Dans la configuration, les serveurs sont indicés de 0 à N-1. L'exemple ci-dessus est un petit graphe à 5 sommets 
-que vous pouvez utiliser pour des tests. Il suffit de remplacer les serveurs dans la [configuration](./config.json)
+que vous pouvez utiliser pour des tests. Il suffit de remplacer les serveurs dans la [configuration](./config.json) 
+ou d'utiliser la copie de la configuration ([config-small-graph.json](./config-small-graph.json))
 
 ## Utilisation
 
@@ -78,6 +79,130 @@ $ go run client.go --mode 1
 $ go run client.go --mode 2
 ```
 
+En mode Ondulatoire (1), le client pourra demander le résultat à un noeud quelconque.
+En mode Sondes et Echos (2), le résultat sera envoyé en réponse à la fin de l'algorithme par le serveur initial.
+
 ## Scenarios de tests
 
-### Ondulatoire
+### Client
+
+- Entrer une chaine vide comme mot: non accepté, erreur reportée à l'utilisateur
+- Entrer des caractères non comptés par les serveurs (A à Z): accepté, pas d'erreur, mais ces caractères ne seront pas comptabilisés par l'algorithme.
+- Numéro de serveur invalide (`< 0` ou `> 25` (selon configuration)): non accepté, erreur reportée à l'utilisateur
+
+### Algorithme Ondulatoire
+
+#### Démarrage d'un seul serveur fonctionnel
+
+```
+$ go run server.go --id 1 --mode 1
+```
+
+**TEST OK**
+
+---
+
+#### Démarrage de tous les serveurs fonctionnel
+
+```
+$ go run servers.go --mode 1
+```
+
+**TEST OK**
+
+---
+
+#### Fonctionnel avec tous les serveurs
+
+_mot = abcdefghijklmnopqrstuvwxyz_
+
+Démarrage de tous les serveurs
+```
+$ go run servers.go --mode 1
+```
+
+Sur le client: Envoi du mot et choix du serveur
+
+Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 1 pour les lettres A à Z**
+
+**TEST OK**
+
+---
+
+#### Majuscules et minuscules doivent être comptées comme la même lettre
+_mot = abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_
+
+Démarrage de tous les serveurs
+```
+$ go run servers.go --mode 1
+```
+
+Sur le client: Envoi du mot et choix du serveur
+
+Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 2 pour les lettres A à Z**
+
+**TEST OK**
+
+---
+
+#### Résultat identique sur tous les serveurs
+
+En reprenant le test précédent, tous les serveur doivent fournir le même résultat lors d'une demande: => **Valeur de 2 pour les lettres A à Z**
+
+**TEST OK**
+
+---
+
+### Algorithme Sondes et échos
+
+#### Démarrage d'un seul serveur fonctionnel
+
+```
+$ go run server.go --id 1 --mode 2
+```
+
+**TEST OK**
+
+---
+
+#### Démarrage de tous les serveurs fonctionnel
+
+```
+$ go run servers.go --mode 2
+```
+
+**TEST OK**
+
+---
+
+#### Fonctionnel avec tous les serveurs
+
+_mot = abcdefghijklmnopqrstuvwxyz_
+
+Démarrage de tous les serveurs
+```
+$ go run servers.go --mode 2
+```
+
+Sur le client: Envoi du mot et choix du serveur
+
+Résultat attentu et obtenu => **Valeur de 1 pour les lettres A à Z**
+
+**TEST OK**
+
+---
+
+#### Majuscules et minuscules doivent être comptées comme la même lettre
+_mot = abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_
+
+Démarrage de tous les serveurs
+```
+$ go run servers.go --mode 1
+```
+
+Sur le client: Envoi du mot et choix du serveur
+
+Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 2 pour les lettres A à Z**
+
+**TEST OK**
+
