@@ -40,13 +40,12 @@ func main() {
 			}, "Please enter a valid server").Read()
 
 			for i, server := range c.Servers {
+				if i == root {
+					continue
+				}
+				// Start the nodes
 				if client, err := CreateClient(server); err == nil {
-					var message Message
-					if root == i {
-						message = Message{Type: "start", Data: word}
-					} else {
-						message = Message{Type: "probe"}
-					}
+					message := Message{Type: "probe"}
 
 					if err := client.Send(message); err != nil {
 						log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, server, err)
@@ -57,8 +56,29 @@ func main() {
 				}
 			}
 
+			// Start the root
+			rootSrv := c.Servers[root]
+			if client, err := CreateClient(rootSrv); err == nil {
+				message := Message{Type: "start", Data: word}
+
+				if err := client.Send(message); err != nil {
+					log.Logf(log.Error, "Error sending \"%s\" to %s: %s", word, rootSrv, err)
+				} else {
+					log.Logf(log.Info, "Sent \"%s\" to server %d", message, rootSrv.FullAddress())
+				}
+				select {
+				case msg := <-client.GetMessage():
+					PrintResult(msg, word)
+				}
+				client.Close()
+			}
+
 		} else {
 			log.Logf(log.Error, "Invalid mode %d selected, valid modes are: <1 | 2>", *clientMode)
+		}
+
+		if *clientMode == 2 {
+			return
 		}
 
 		for {

@@ -22,11 +22,12 @@ type peMessage struct {
 }
 
 type ProbeAndEchoes struct {
-	server     server.Server
-	data       map[string]Data
-	neighbours []int
-	parent     int
-	pending    chan client.Message
+	server        server.Server
+	data          map[string]Data
+	neighbours    []int
+	parent        int
+	pending       chan client.Message
+	initierClient server.Message
 }
 
 func NewProbesAndEchoes(server server.Server) *ProbeAndEchoes {
@@ -49,6 +50,10 @@ func (pe *ProbeAndEchoes) Run() {
 			switch message.Type {
 			case "start":
 				pe.startAsRoot(message.Data)
+				if data, err := json.Marshal(pe.data); err == nil {
+					_ = pe.initierClient.Reply(data)
+				}
+
 			case "probe":
 				pe.startAsNode()
 			}
@@ -64,10 +69,12 @@ func (pe *ProbeAndEchoes) startAsRoot(word string) {
 	log.Logf(log.Info, "Server %d found %d %s in %s", pe.server.GetId(), counter, letter, word)
 	pe.data[letter] = counter
 
-	for neighbour := range pe.neighbours {
+	for _, neighbour := range pe.neighbours {
 		pe.send(Probe, word, neighbour)
-		log.Logf(log.Info, "Server %d sent %s", pe.server.GetId(), Probe)
+		log.Logf(log.Info, "Server %d sent %s to %d", pe.server.GetId(), Probe, neighbour)
 	}
+
+	log.Logf(log.Info, "Root server sent all its probes to neighbours")
 
 	for range pe.neighbours {
 		pe.receive()
@@ -79,10 +86,10 @@ func (pe *ProbeAndEchoes) startAsRoot(word string) {
 
 func (pe *ProbeAndEchoes) startAsNode() {
 	log.Logf(log.Info, "P&E algorithm started on server %d as a node", pe.server.GetId())
-	message, _ := pe.receive()
-
+	message, _ := pe.receive() // Wait for a probe
 	word := message.Word
 
+	// Count the letters
 	letter := pe.server.GetConfig().Letter
 	counter := CountLetter(word, letter)
 	log.Logf(log.Info, "Server %d found %d %s in %s", pe.server.GetId(), counter, letter, word)
@@ -90,10 +97,10 @@ func (pe *ProbeAndEchoes) startAsNode() {
 
 	pe.parent = message.From
 
-	for i, neighbour := range pe.neighbours {
-		if i != pe.parent {
-			log.Logf(log.Info, "Server %d sent %s, content: %s", pe.server.GetId(), Probe, word)
-			pe.send(Probe, word, neighbour) // TODO: send text
+	for _, neighbour := range pe.neighbours {
+		if neighbour != pe.parent {
+			log.Logf(log.Info, "Server %d sent %s to %d, content: %s", pe.server.GetId(), Probe, neighbour, word)
+			pe.send(Probe, word, neighbour)
 		}
 	}
 
@@ -145,13 +152,10 @@ func (pe *ProbeAndEchoes) parseClientMessage() {
 			}
 			switch m.Type {
 			case "start":
+				pe.initierClient = message
 				go func() { pe.pending <- m }()
 			case "probe":
 				go func() { pe.pending <- m }()
-			case "result":
-				if data, err := json.Marshal(pe.data); err == nil {
-					_ = message.Reply(data)
-				}
 			}
 		}
 	}
