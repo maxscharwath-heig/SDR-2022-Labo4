@@ -1,0 +1,13 @@
+{
+  "servers": [
+    { "host": "localhost", "port": 10000, "letter": "A", "neighbours": [1, 4] },
+    { "host": "localhost", "port": 10001, "letter": "B", "neighbours": [0, 2] },
+    { "host": "localhost", "port": 10002, "letter": "C", "neighbours": [1, 3, 4] },
+    { "host": "localhost", "port": 10003, "letter": "D", "neighbours": [2, 4] },
+    { "host": "localhost", "port": 10004, "letter": "E", "neighbours": [0, 2, 3] }
+  ],
+  "log": {
+    "enabled": true,
+    "level": 0
+  }
+}

@@ -63,6 +63,7 @@ func (pe *ProbeAndEchoes) Run() {
 
 func (pe *ProbeAndEchoes) startAsRoot(word string) {
 	log.Logf(log.Info, "P&E algorithm started on server %d as the root", pe.server.GetId())
+	pe.data = make(map[string]Data)
 
 	letter := pe.server.GetConfig().Letter
 	counter := CountLetter(word, letter)
@@ -86,6 +87,7 @@ func (pe *ProbeAndEchoes) startAsRoot(word string) {
 
 func (pe *ProbeAndEchoes) startAsNode() {
 	log.Logf(log.Info, "P&E algorithm started on server %d as a node", pe.server.GetId())
+	pe.data = make(map[string]Data)
 	message, _ := pe.receive() // Wait for a probe
 	word := message.Word
 

@@ -29,11 +29,19 @@ La configuration des serveurs se trouve dans le fichier [`config.json`](./config
 }
 ```
 
+Dans la configuration, les serveurs sont indicés de 0 à N-1. L'exemple ci-dessus est un petit graphe à 5 sommets 
+que vous pouvez utiliser pour des tests. Il suffit de remplacer les serveurs dans la [configuration](./config.json)
+
 ## Utilisation
+
+### Visualisation
+
+Nous avons généré un graphe à 26 sommets pour pouvoir compter toutes les lettres de l'alphabet. Voici sa représentation:
+![Graphe à 26 sommets](./docs/graph.png)
 
 ### Démarrer les serveurs
 
-Les serveurs sont indicés de 1 à N.
+Dans la partie client, les serveurs sont indicés de 0 à N-1.
 Il est possible de choisir le mode de démarrage des serveurs:
 - 1: Ondulatoire (défaut)
 - 2: Sondes et échos
@@ -46,7 +54,7 @@ $ go run server.go --id 1 --mode 1
 // Démarrage du serveur 2 en mode Sondes et échos
 $ go run server.go --id 2 --mode 2
 ```
-Il est également possible de démarrer directement tous les serveurs:
+Il est également possible et recommandé de démarrer directement tous les serveurs :
 
 ```bash
 // Démarrage de tous les serveurs en mode Ondulatoire

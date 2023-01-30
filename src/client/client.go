@@ -5,7 +5,9 @@ import (
 	"SDR-Labo4/src/network"
 	"SDR-Labo4/src/utils/log"
 	"encoding/json"
+	"fmt"
 	"net"
+	"sort"
 )
 
 type Message struct {
@@ -57,4 +59,21 @@ func CreateClient(server config.ServerConfig) (*Client, error) {
 	}
 	go client.processMessage()
 	return client, nil
+}
+
+func PrintResult(msg []byte, word string) {
+	var results map[string]int
+	json.Unmarshal(msg, &results)
+
+	// Sort the map before printing
+	keys := make([]string, 0, len(results))
+	for k := range results {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	// Display results
+	fmt.Printf("\n\n Result for word: \"%s\" \n", word)
+	for _, k := range keys {
+		fmt.Printf("%s: %d \n", k, results[k])
+	}
 }
