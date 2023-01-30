@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Run all servers at once with selected mode
+
 package main
 
 import (

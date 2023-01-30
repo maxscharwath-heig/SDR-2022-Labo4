@@ -3,8 +3,8 @@
 > Nicolas Crausaz & Maxime Scharwath
 
 Le labo est composé de 2 parties qui permettent chacune de compter de façon distribuée le nombre
-d’occurrences de lettres dans un texte. Chaque noeud du réseau est responsable du comptage des
-occurrences d’une lettre. Le réseau physique interconnecte tous les noeuds mais les algorithmes
+d’occurrences de lettres dans un texte. Chaque nœud du réseau est responsable du comptage des
+occurrences d’une lettre. Le réseau physique interconnecte tous les nœuds, mais les algorithmes
 distribués utilisent uniquement un réseau logique dont la topologie est un graphe quelconque (pas
 forcément une arborescence). Pour la première partie, on utilisera un algorithme synchrone
 (ondulatoire) et pour la deuxième partie, un algorithme asynchrone (sondes et échos).
@@ -37,15 +37,15 @@ ou d'utiliser la copie de la configuration ([config-small-graph.json](./config-s
 
 ### Visualisation
 
-Nous avons généré un graphe à 26 sommets pour pouvoir compter toutes les lettres de l'alphabet. Voici sa représentation:
+Nous avons généré un graphe à 26 sommets pour pouvoir compter toutes les lettres de l'alphabet. Voici sa représentation :
 ![Graphe à 26 sommets](./docs/graph.png)
 
 ### Démarrer les serveurs
 
 Dans la partie client, les serveurs sont indicés de 0 à N-1.
-Il est possible de choisir le mode de démarrage des serveurs:
-- 1: Ondulatoire (défaut)
-- 2: Sondes et échos
+Il est possible de choisir le mode de démarrage des serveurs :
+- 1 : Ondulatoire (défaut)
+- 2 : Sondes et échos
 
 Exemple:
 ```bash
@@ -79,15 +79,15 @@ $ go run client.go --mode 1
 $ go run client.go --mode 2
 ```
 
-En mode Ondulatoire (1), le client pourra demander le résultat à un noeud quelconque.
+En mode Ondulatoire (1), le client pourra demander le résultat à un nœud quelconque.
 En mode Sondes et Echos (2), le résultat sera envoyé en réponse à la fin de l'algorithme par le serveur initial.
 
 ## Scenarios de tests
 
 ### Client
 
-- Entrer une chaine vide comme mot: non accepté, erreur reportée à l'utilisateur
-- Entrer des caractères non comptés par les serveurs (A à Z): accepté, pas d'erreur, mais ces caractères ne seront pas comptabilisés par l'algorithme.
+- Entrer une chaine vide comme mot : non accepté, erreur reportée à l'utilisateur
+- Entrer des caractères non comptés par les serveurs (A à Z) : accepté, pas d'erreur, mais ces caractères ne seront pas comptabilisés par l'algorithme.
 - Numéro de serveur invalide (`< 0` ou `> 25` (selon configuration)): non accepté, erreur reportée à l'utilisateur
 
 ### Algorithme Ondulatoire
@@ -121,9 +121,9 @@ Démarrage de tous les serveurs
 $ go run servers.go --mode 1
 ```
 
-Sur le client: Envoi du mot et choix du serveur
+Sur le client : Envoi du mot et choix du serveur
 
-Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 1 pour les lettres A à Z**
+Demande du résultat à un serveur quelconque. Résultat attendu et obtenu => **Valeur de 1 pour les lettres A à Z**
 
 **TEST OK**
 
@@ -139,7 +139,7 @@ $ go run servers.go --mode 1
 
 Sur le client: Envoi du mot et choix du serveur
 
-Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 2 pour les lettres A à Z**
+Demande du résultat à un serveur quelconque. Résultat attendu et obtenu => **Valeur de 2 pour les lettres A à Z**
 
 **TEST OK**
 
@@ -147,7 +147,7 @@ Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **
 
 #### Résultat identique sur tous les serveurs
 
-En reprenant le test précédent, tous les serveur doivent fournir le même résultat lors d'une demande: => **Valeur de 2 pour les lettres A à Z**
+En reprenant le test précédent, tous les serveurs doivent fournir le même résultat lors d'une demande : => **Valeur de 2 pour les lettres A à Z**
 
 **TEST OK**
 
@@ -186,7 +186,7 @@ $ go run servers.go --mode 2
 
 Sur le client: Envoi du mot et choix du serveur
 
-Résultat attentu et obtenu => **Valeur de 1 pour les lettres A à Z**
+Résultat attendu et obtenu => **Valeur de 1 pour les lettres A à Z**
 
 **TEST OK**
 
@@ -202,7 +202,7 @@ $ go run servers.go --mode 1
 
 Sur le client: Envoi du mot et choix du serveur
 
-Demande du résultat à un serveur quelconque. Résultat attentu et obtenu => **Valeur de 2 pour les lettres A à Z**
+Demande du résultat à un serveur quelconque. Résultat attendu et obtenu => **Valeur de 2 pour les lettres A à Z**
 
 **TEST OK**
 

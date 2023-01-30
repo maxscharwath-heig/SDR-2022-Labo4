@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Defines network functions
+
 package network
 
 import (

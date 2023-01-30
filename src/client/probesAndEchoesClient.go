@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Client to interact with probes & echoes servers
+
 package client
 
 import (

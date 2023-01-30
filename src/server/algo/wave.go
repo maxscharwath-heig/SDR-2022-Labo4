@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Waves algorithm
+
 package algo
 
 import (
@@ -92,7 +96,7 @@ func (w *Wave) init() {
 
 func (w *Wave) getNeighbours() []int {
 	keys := make([]int, 0)
-	for k, _ := range w.neighbours {
+	for k := range w.neighbours {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)

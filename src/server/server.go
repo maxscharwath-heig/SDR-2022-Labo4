@@ -1,3 +1,6 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+
 package server
 
 import (

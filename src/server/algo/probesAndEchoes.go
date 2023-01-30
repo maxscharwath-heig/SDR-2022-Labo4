@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Probes & Echoes algorithm
+
 package algo
 
 import (

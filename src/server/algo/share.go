@@ -1,3 +1,7 @@
+// SDR - Labo 4
+// Nicolas Crausaz & Maxime Scharwath
+// Common functions used by multiple algorithms
+
 package algo
 
 import (
