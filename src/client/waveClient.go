@@ -45,5 +45,12 @@ func AskResultToServer(servers []config.ServerConfig, word string) {
 			}
 			client.Close()
 		}
+
+		// ask if we should ask for another result
+		if input.BasicInput[string]("Do you want to ask for another result? [y/n]: ").AddCheck(func(s string) bool {
+			return s == "y" || s == "n"
+		}, "Please enter a valid answer").Read() == "n" {
+			break
+		}
 	}
 }
